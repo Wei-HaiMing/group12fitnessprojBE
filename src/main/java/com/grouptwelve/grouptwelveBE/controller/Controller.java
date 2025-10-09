@@ -13,13 +13,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.grouptwelve.grouptwelveBE.model.User;
-import com.grouptwelve.grouptwelveBE.repository.FitnessUserRepository;
+import com.grouptwelve.grouptwelveBE.repository.UserRepository;
 
 @RestController
 @RequestMapping("/api")
 public class Controller {
     @Autowired
-    private FitnessUserRepository userRepository;
+    private UserRepository userRepository;
 
     @GetMapping("/")
     public String root() {
