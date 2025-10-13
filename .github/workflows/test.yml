@@ -29,12 +29,130 @@ jobs:
         run: chmod +x ./gradlew
         
       - name: Run tests
-        run: ./gradlew test
+        run: ./gradlew test --continue
         env:
           SPRING_PROFILES_ACTIVE: test
+          
+      - name: Generate Test Summary
+        if: always()
+        run: |
+          echo "## 🧪 Test Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "build/test-results/test" ]; then
+            # Count total tests, failures, and errors from XML files
+            TOTAL_TESTS=$(find build/test-results/test -name "TEST-*.xml" -exec grep -h 'tests="[0-9]*"' {} \; | grep -o 'tests="[0-9]*"' | grep -o '[0-9]*' | awk '{sum += $1} END {print sum+0}')
+            TOTAL_FAILURES=$(find build/test-results/test -name "TEST-*.xml" -exec grep -h 'failures="[0-9]*"' {} \; | grep -o 'failures="[0-9]*"' | grep -o '[0-9]*' | awk '{sum += $1} END {print sum+0}')
+            TOTAL_ERRORS=$(find build/test-results/test -name "TEST-*.xml" -exec grep -h 'errors="[0-9]*"' {} \; | grep -o 'errors="[0-9]*"' | grep -o '[0-9]*' | awk '{sum += $1} END {print sum+0}')
+            
+            TOTAL_FAILED=$((TOTAL_FAILURES + TOTAL_ERRORS))
+            TOTAL_PASSED=$((TOTAL_TESTS - TOTAL_FAILED))
+            
+            if [ $TOTAL_FAILED -eq 0 ]; then
+              echo "### ✅ All Tests Passed!" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### ❌ Some Tests Failed" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| 📊 Total Tests | $TOTAL_TESTS |" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ Passed | $TOTAL_PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ Failed | $TOTAL_FAILED |" >> $GITHUB_STEP_SUMMARY
+            
+            if [ $TOTAL_TESTS -gt 0 ]; then
+              SUCCESS_RATE=$(( (TOTAL_PASSED * 100) / TOTAL_TESTS ))
+              echo "| 📈 Success Rate | ${SUCCESS_RATE}% |" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📋 Test Classes Executed:" >> $GITHUB_STEP_SUMMARY
+            find build/test-results/test -name "TEST-*.xml" | while read file; do
+              CLASS_NAME=$(basename "$file" .xml | sed 's/^TEST-//')
+              TEST_COUNT=$(grep -o 'tests="[0-9]*"' "$file" | grep -o '[0-9]*')
+              echo "- **$CLASS_NAME**: $TEST_COUNT tests" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "❌ No test results found!" >> $GITHUB_STEP_SUMMARY
+          fi
           
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v4
         if: success() || failure()
         with:
           report_paths: '**/build/test-results/test/TEST-*.xml'
+          detailed_summary: true
+          include_passed: true
+          check_name: 'JUnit Test Results'
+          job_summary: true
+          
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            build/reports/tests/test/
+            build/test-results/test/
+          retention-days: 30
+          
+      - name: Add Test Summary Comment
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request' && (success() || failure())
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Read test results
+            const testDir = 'build/test-results/test';
+            let totalTests = 0;
+            let passedTests = 0;
+            let failedTests = 0;
+            
+            if (fs.existsSync(testDir)) {
+              const files = fs.readdirSync(testDir).filter(f => f.startsWith('TEST-') && f.endsWith('.xml'));
+              
+              for (const file of files) {
+                const content = fs.readFileSync(path.join(testDir, file), 'utf8');
+                const testMatch = content.match(/tests="(\d+)"/);
+                const failureMatch = content.match(/failures="(\d+)"/);
+                const errorMatch = content.match(/errors="(\d+)"/);
+                
+                if (testMatch) {
+                  const tests = parseInt(testMatch[1]);
+                  const failures = parseInt(failureMatch?.[1] || '0');
+                  const errors = parseInt(errorMatch?.[1] || '0');
+                  
+                  totalTests += tests;
+                  failedTests += failures + errors;
+                  passedTests += tests - failures - errors;
+                }
+              }
+            }
+            
+            const status = failedTests > 0 ? '❌' : '✅';
+            const summary = `## ${status} Test Results Summary
+            
+            | Status | Count |
+            |--------|-------|
+            | ✅ Passed | ${passedTests} |
+            | ❌ Failed | ${failedTests} |
+            | 📊 Total | ${totalTests} |
+            
+            **Test Coverage**: ${totalTests > 0 ? Math.round((passedTests / totalTests) * 100) : 0}% passed
+            
+            <details>
+            <summary>📋 View detailed test report</summary>
+            
+            Check the "JUnit Test Results" section above for detailed test information, or download the test artifacts for full HTML reports.
+            
+            </details>`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
