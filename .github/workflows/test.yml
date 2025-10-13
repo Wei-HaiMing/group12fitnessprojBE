@@ -6,6 +6,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
+    # Add permissions for the GITHUB_TOKEN
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      checks: write
+    
     steps:
       - uses: actions/checkout@v4
       
@@ -97,62 +104,38 @@ jobs:
             build/test-results/test/
           retention-days: 30
           
-      - name: Add Test Summary Comment
-        uses: actions/github-script@v7
+      - name: Create Test Summary for PR
         if: github.event_name == 'pull_request' && (success() || failure())
-        with:
-          script: |
-            const fs = require('fs');
-            const path = require('path');
+        run: |
+          echo "## 🧪 Pull Request Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "build/test-results/test" ]; then
+            TOTAL_TESTS=$(find build/test-results/test -name "TEST-*.xml" -exec grep -h 'tests="[0-9]*"' {} \; | grep -o 'tests="[0-9]*"' | grep -o '[0-9]*' | awk '{sum += $1} END {print sum+0}')
+            TOTAL_FAILURES=$(find build/test-results/test -name "TEST-*.xml" -exec grep -h 'failures="[0-9]*"' {} \; | grep -o 'failures="[0-9]*"' | grep -o '[0-9]*' | awk '{sum += $1} END {print sum+0}')
+            TOTAL_ERRORS=$(find build/test-results/test -name "TEST-*.xml" -exec grep -h 'errors="[0-9]*"' {} \; | grep -o 'errors="[0-9]*"' | grep -o '[0-9]*' | awk '{sum += $1} END {print sum+0}')
             
-            // Read test results
-            const testDir = 'build/test-results/test';
-            let totalTests = 0;
-            let passedTests = 0;
-            let failedTests = 0;
+            TOTAL_FAILED=$((TOTAL_FAILURES + TOTAL_ERRORS))
+            TOTAL_PASSED=$((TOTAL_TESTS - TOTAL_FAILED))
             
-            if (fs.existsSync(testDir)) {
-              const files = fs.readdirSync(testDir).filter(f => f.startsWith('TEST-') && f.endsWith('.xml'));
-              
-              for (const file of files) {
-                const content = fs.readFileSync(path.join(testDir, file), 'utf8');
-                const testMatch = content.match(/tests="(\d+)"/);
-                const failureMatch = content.match(/failures="(\d+)"/);
-                const errorMatch = content.match(/errors="(\d+)"/);
-                
-                if (testMatch) {
-                  const tests = parseInt(testMatch[1]);
-                  const failures = parseInt(failureMatch?.[1] || '0');
-                  const errors = parseInt(errorMatch?.[1] || '0');
-                  
-                  totalTests += tests;
-                  failedTests += failures + errors;
-                  passedTests += tests - failures - errors;
-                }
-              }
-            }
+            if [ $TOTAL_FAILED -eq 0 ]; then
+              echo "### ✅ All Tests Passed! Ready to merge." >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### ❌ Tests Failed - Please review" >> $GITHUB_STEP_SUMMARY
+            fi
             
-            const status = failedTests > 0 ? '❌' : '✅';
-            const summary = `## ${status} Test Results Summary
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Status | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ Passed | $TOTAL_PASSED |" >> $GITHUB_STEP_SUMMARY  
+            echo "| ❌ Failed | $TOTAL_FAILED |" >> $GITHUB_STEP_SUMMARY
+            echo "| 📊 Total | $TOTAL_TESTS |" >> $GITHUB_STEP_SUMMARY
             
-            | Status | Count |
-            |--------|-------|
-            | ✅ Passed | ${passedTests} |
-            | ❌ Failed | ${failedTests} |
-            | 📊 Total | ${totalTests} |
+            if [ $TOTAL_TESTS -gt 0 ]; then
+              SUCCESS_RATE=$(( (TOTAL_PASSED * 100) / TOTAL_TESTS ))
+              echo "| 📈 Success Rate | ${SUCCESS_RATE}% |" >> $GITHUB_STEP_SUMMARY
+            fi
             
-            **Test Coverage**: ${totalTests > 0 ? Math.round((passedTests / totalTests) * 100) : 0}% passed
-            
-            <details>
-            <summary>📋 View detailed test report</summary>
-            
-            Check the "JUnit Test Results" section above for detailed test information, or download the test artifacts for full HTML reports.
-            
-            </details>`;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: summary
-            });
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "💡 **Tip**: Check the 'JUnit Test Results' section above or download test artifacts for detailed reports." >> $GITHUB_STEP_SUMMARY
+          fi
