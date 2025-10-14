@@ -79,7 +79,7 @@ public class Controller {
 
 
     //GAMES (8 roues) 
-    // POST (1): create one
+    // POST (1): create one game record 
     @PostMapping("/games")
     public Game createGame(@RequestBody Game g) {
         if (g.getLeague() == null || g.getLeague().isBlank()) g.setLeague("NFL");
@@ -87,7 +87,7 @@ public class Controller {
         return gameRepository.save(g);
     }
 
-    // POST (2): bulk create
+    // POST (2): bulk create multiple games at once
     @PostMapping("/games/bulk")
     public List<Game> bulkCreateGames(@RequestBody List<Game> games) {
         for (Game g : games) {
@@ -97,7 +97,7 @@ public class Controller {
         return gameRepository.saveAll(games);
     }
 
-    // GET (1): list (optional status)
+    // GET (1): list (optional status) list all games or by status
     @GetMapping("/games")
     public List<Game> listGames(@RequestParam(required = false) String status) {
         return (status == null || status.isBlank())
@@ -105,13 +105,13 @@ public class Controller {
                 : gameRepository.findByStatus(status);
     }
 
-    // GET (2): one by id
+    // GET (2): one by id get on specifc game
     @GetMapping("/games/{id}")
     public Game getGame(@PathVariable Long id) {
         return gameRepository.findById(id).orElse(null);
     }
 
-    // PUT (1): update core fields
+    // PUT (1): update core fields (like the game info - status or teams)
     @PutMapping("/games/{id}")
     public Game updateGame(@PathVariable Long id, @RequestBody Game u) {
         return gameRepository.findById(id).map(g -> {
