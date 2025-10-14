@@ -42,5 +42,4 @@ public class FavoriteTeam {
     public void setTeamId(Long teamId) {
         this.teamId = teamId;
     }
-
 }
