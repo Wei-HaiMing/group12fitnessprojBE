@@ -6,20 +6,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.grouptwelve.grouptwelveBE.model.FavoriteTeam;
 import com.grouptwelve.grouptwelveBE.model.Game;
 import com.grouptwelve.grouptwelveBE.model.User;
+import com.grouptwelve.grouptwelveBE.repository.FavoriteTeamRepository;
 import com.grouptwelve.grouptwelveBE.repository.GameRepository;
 import com.grouptwelve.grouptwelveBE.repository.UserRepository;
-import com.grouptwelve.grouptwelveBE.model.FavoriteTeam;
-import com.grouptwelve.grouptwelveBE.repository.FavoriteTeamRepository;
 
 
 // keep all controllers in this file for simplicity
@@ -154,7 +154,7 @@ public class Controller {
     }
     
 
-
+    // end of games table
 
 
     @DeleteMapping("/users/{id}") // DELETE 1
