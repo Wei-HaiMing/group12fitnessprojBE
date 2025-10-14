@@ -20,5 +20,5 @@ public interface FavoriteTeamRepository extends JpaRepository<FavoriteTeam, Long
     List<FavoriteTeam> findByTeamId(Long teamId);                            // WHERE teamId = ?
     boolean existsByUserIdAndTeamId(Long userId, Long teamId);             // SELECT COUNT(*) WHERE userId = ? AND teamId = ?
     void deleteByUserIdAndTeamId(Long userId, Long teamId);                // DELETE WHERE userId = ? AND teamId = ?
-    void modifyByUserIdAndTeamId(Long userId, Long teamId, FavoriteTeam newFavoriteTeam);                // UPDATE WHERE userId = ? AND teamId = ?
+    // void saveByUserIdAndTeamId(Long userId, Long teamId, FavoriteTeam newFavoriteTeam);                // UPDATE WHERE userId = ? AND teamId = ?
 }  

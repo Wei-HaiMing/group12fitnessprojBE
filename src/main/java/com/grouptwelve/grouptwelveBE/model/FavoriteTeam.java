@@ -3,7 +3,7 @@ package com.grouptwelve.grouptwelveBE.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "favorite_teams")
+@Table(name="favoriteTeam")
 public class FavoriteTeam {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -12,10 +12,9 @@ public class FavoriteTeam {
     private Long userId;
     private Long teamId;
 
-    public FavoriteTeam() {
-    }
+    public FavoriteTeam(){}
 
-    public FavoriteTeam(Long userId, Long teamId) {
+    public FavoriteTeam(Long userId, Long teamId){
         this.userId = userId;
         this.teamId = teamId;
     }
