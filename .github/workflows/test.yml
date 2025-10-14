@@ -1,0 +1,141 @@
+name: Run Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    # Add permissions for the GITHUB_TOKEN
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      checks: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+            
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+        
+      - name: Run tests
+        run: ./gradlew test --continue
+        env:
+          SPRING_PROFILES_ACTIVE: test
+          
+      - name: Generate Test Summary
+        if: always()
+        run: |
+          echo "## 🧪 Test Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "build/test-results/test" ]; then
+            # Count total tests, failures, and errors from XML files
+            TOTAL_TESTS=$(find build/test-results/test -name "TEST-*.xml" -exec grep -h 'tests="[0-9]*"' {} \; | grep -o 'tests="[0-9]*"' | grep -o '[0-9]*' | awk '{sum += $1} END {print sum+0}')
+            TOTAL_FAILURES=$(find build/test-results/test -name "TEST-*.xml" -exec grep -h 'failures="[0-9]*"' {} \; | grep -o 'failures="[0-9]*"' | grep -o '[0-9]*' | awk '{sum += $1} END {print sum+0}')
+            TOTAL_ERRORS=$(find build/test-results/test -name "TEST-*.xml" -exec grep -h 'errors="[0-9]*"' {} \; | grep -o 'errors="[0-9]*"' | grep -o '[0-9]*' | awk '{sum += $1} END {print sum+0}')
+            
+            TOTAL_FAILED=$((TOTAL_FAILURES + TOTAL_ERRORS))
+            TOTAL_PASSED=$((TOTAL_TESTS - TOTAL_FAILED))
+            
+            if [ $TOTAL_FAILED -eq 0 ]; then
+              echo "### ✅ All Tests Passed!" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### ❌ Some Tests Failed" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| 📊 Total Tests | $TOTAL_TESTS |" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ Passed | $TOTAL_PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ Failed | $TOTAL_FAILED |" >> $GITHUB_STEP_SUMMARY
+            
+            if [ $TOTAL_TESTS -gt 0 ]; then
+              SUCCESS_RATE=$(( (TOTAL_PASSED * 100) / TOTAL_TESTS ))
+              echo "| 📈 Success Rate | ${SUCCESS_RATE}% |" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📋 Test Classes Executed:" >> $GITHUB_STEP_SUMMARY
+            find build/test-results/test -name "TEST-*.xml" | while read file; do
+              CLASS_NAME=$(basename "$file" .xml | sed 's/^TEST-//')
+              TEST_COUNT=$(grep -o 'tests="[0-9]*"' "$file" | grep -o '[0-9]*')
+              echo "- **$CLASS_NAME**: $TEST_COUNT tests" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "❌ No test results found!" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v4
+        if: success() || failure()
+        with:
+          report_paths: '**/build/test-results/test/TEST-*.xml'
+          detailed_summary: true
+          include_passed: true
+          check_name: 'JUnit Test Results'
+          job_summary: true
+          
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            build/reports/tests/test/
+            build/test-results/test/
+          retention-days: 30
+          
+      - name: Create Test Summary for PR
+        if: github.event_name == 'pull_request' && (success() || failure())
+        run: |
+          echo "## 🧪 Pull Request Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "build/test-results/test" ]; then
+            TOTAL_TESTS=$(find build/test-results/test -name "TEST-*.xml" -exec grep -h 'tests="[0-9]*"' {} \; | grep -o 'tests="[0-9]*"' | grep -o '[0-9]*' | awk '{sum += $1} END {print sum+0}')
+            TOTAL_FAILURES=$(find build/test-results/test -name "TEST-*.xml" -exec grep -h 'failures="[0-9]*"' {} \; | grep -o 'failures="[0-9]*"' | grep -o '[0-9]*' | awk '{sum += $1} END {print sum+0}')
+            TOTAL_ERRORS=$(find build/test-results/test -name "TEST-*.xml" -exec grep -h 'errors="[0-9]*"' {} \; | grep -o 'errors="[0-9]*"' | grep -o '[0-9]*' | awk '{sum += $1} END {print sum+0}')
+            
+            TOTAL_FAILED=$((TOTAL_FAILURES + TOTAL_ERRORS))
+            TOTAL_PASSED=$((TOTAL_TESTS - TOTAL_FAILED))
+            
+            if [ $TOTAL_FAILED -eq 0 ]; then
+              echo "### ✅ All Tests Passed! Ready to merge." >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### ❌ Tests Failed - Please review" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Status | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ Passed | $TOTAL_PASSED |" >> $GITHUB_STEP_SUMMARY  
+            echo "| ❌ Failed | $TOTAL_FAILED |" >> $GITHUB_STEP_SUMMARY
+            echo "| 📊 Total | $TOTAL_TESTS |" >> $GITHUB_STEP_SUMMARY
+            
+            if [ $TOTAL_TESTS -gt 0 ]; then
+              SUCCESS_RATE=$(( (TOTAL_PASSED * 100) / TOTAL_TESTS ))
+              echo "| 📈 Success Rate | ${SUCCESS_RATE}% |" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "💡 **Tip**: Check the 'JUnit Test Results' section above or download test artifacts for detailed reports." >> $GITHUB_STEP_SUMMARY
+          fi
