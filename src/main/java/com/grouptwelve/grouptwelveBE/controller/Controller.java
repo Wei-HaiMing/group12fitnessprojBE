@@ -110,15 +110,15 @@ public class Controller {
                 : gameRepository.findByStatus(status);
     }
 
-    // GET (2): one by id get on specifc game
+    // GET (2): one by id
     @GetMapping("/games/{id}")
-    public Game getGame(@PathVariable Long id) {
+    public Game getGame(@PathVariable("id") Long id) {
         return gameRepository.findById(id).orElse(null);
     }
 
     // PUT (1): update core fields (like the game info - status or teams)
     @PutMapping("/games/{id}")
-    public Game updateGame(@PathVariable Long id, @RequestBody Game u) {
+    public Game updateGame(@PathVariable("id") Long id, @RequestBody Game u) {
         return gameRepository.findById(id).map(g -> {
             if (u.getLeague() != null) g.setLeague(u.getLeague());
             if (u.getHomeTeam() != null) g.setHomeTeam(u.getHomeTeam());
@@ -133,7 +133,7 @@ public class Controller {
 
     // PUT (2): update odds only
     @PutMapping("/games/{id}/odds")
-    public Game updateOdds(@PathVariable Long id, @RequestBody Game u) {
+    public Game updateOdds(@PathVariable("id") Long id, @RequestBody Game u) {
         return gameRepository.findById(id).map(g -> {
             if (u.getOddsHome() != null) g.setOddsHome(u.getOddsHome());
             if (u.getOddsAway() != null) g.setOddsAway(u.getOddsAway());
@@ -143,7 +143,7 @@ public class Controller {
 
     // DELETE (1): delete one
     @DeleteMapping("/games/{id}")
-    public void deleteGame(@PathVariable Long id) {
+    public void deleteGame(@PathVariable("id") Long id) {
         gameRepository.deleteById(id);
     }
 
