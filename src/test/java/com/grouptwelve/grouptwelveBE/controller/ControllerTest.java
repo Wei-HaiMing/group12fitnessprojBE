@@ -68,4 +68,9 @@ class ControllerTest {
                 .andExpect(jsonPath("$.name").value("Test User"))
                 .andExpect(jsonPath("$.email").value("test@example.com"));
     }
+
+
+    // Tests for Games 
+
+
 }
