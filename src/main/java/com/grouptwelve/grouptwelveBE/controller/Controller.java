@@ -44,7 +44,7 @@ public class Controller {
     }
 
     @GetMapping("/users/{id}") // GET 2
-    public User getUserById(@PathVariable Long id) {
+    public User getUserById(@PathVariable("id") Long id) {
         return userRepository.findById(id).orElse(null);
     }
 
@@ -54,7 +54,7 @@ public class Controller {
     }
 
     @PatchMapping("/users/{id}/name") // PATCH 1
-    public User updateName(@PathVariable Long id, @RequestBody String newName) {
+    public User updateName(@PathVariable("id") Long id, @RequestBody String newName) {
         User user = userRepository.findById(id).orElse(null);
         if (user != null) {
             user.setName(newName);
@@ -64,7 +64,7 @@ public class Controller {
     }
 
     @PatchMapping("/users/{id}/password") // PATCH 2
-    public User updatePassword(@PathVariable Long id, @RequestBody String newPassword) {
+    public User updatePassword(@PathVariable("id") Long id, @RequestBody String newPassword) {
         User user = userRepository.findById(id).orElse(null);
         if (user != null) {
             user.setPassword(newPassword);
@@ -74,7 +74,7 @@ public class Controller {
     }
 
     @DeleteMapping("/users/{id}") // DELETE 1
-    public String deleteUser(@PathVariable Long id) {
+    public String deleteUser(@PathVariable("id") Long id) {
         if (userRepository.existsById(id)) {
             userRepository.deleteById(id);
             return "User with id " + id + " deleted.";
@@ -84,7 +84,7 @@ public class Controller {
     }
 
     @DeleteMapping("/users/email/{email}") // DELETE 2
-    public String deleteUserByEmail(@PathVariable String email) {
+    public String deleteUserByEmail(@PathVariable("email") String email) {
         if (userRepository.existsByEmail(email)) {
             userRepository.deleteByEmail(email);
             return "User with email " + email + " deleted.";
@@ -101,17 +101,17 @@ public class Controller {
     }
 
     @GetMapping("/favoriteteams/user/{userId}") // GET 2
-    public List<FavoriteTeam> getFavoriteTeamsByUserId(@PathVariable Long userId) {
+    public List<FavoriteTeam> getFavoriteTeamsByUserId(@PathVariable("userId") Long userId) {
         return favoriteTeamRepository.findByUserId(userId);
     }
 
     @GetMapping("/favoriteteams/user/{userId}/team/{teamId}") // GET 3
-    public FavoriteTeam getFavoriteTeamByUserIdAndTeamId(@PathVariable Long userId, @PathVariable Long teamId) {
+    public FavoriteTeam getFavoriteTeamByUserIdAndTeamId(@PathVariable("userId") Long userId, @PathVariable("teamId") Long teamId) {
         return favoriteTeamRepository.findByUserIdAndTeamId(userId, teamId).orElse(null);
     }
 
     @PostMapping("/favoriteteams/user/{userId}/team/{teamId}") // POST 1
-    public FavoriteTeam addFavoriteTeamByUserIdAndTeamId(@PathVariable Long userId, @PathVariable Long teamId) {
+    public FavoriteTeam addFavoriteTeamByUserIdAndTeamId(@PathVariable("userId") Long userId, @PathVariable("teamId") Long teamId) {
         FavoriteTeam favoriteTeam = new FavoriteTeam();
         favoriteTeam.setUserId(userId);
         favoriteTeam.setTeamId(teamId);
@@ -119,7 +119,7 @@ public class Controller {
     }
 
     @PutMapping("/favoriteteams/user/{userId}/team/{teamId}") // PUT 1
-    public FavoriteTeam updateFavoriteTeam(@PathVariable Long userId, @PathVariable Long teamId, @RequestBody FavoriteTeam updatedFavoriteTeam) {
+    public FavoriteTeam updateFavoriteTeam(@PathVariable("userId") Long userId, @PathVariable("teamId") Long teamId, @RequestBody FavoriteTeam updatedFavoriteTeam) {
         FavoriteTeam existing = favoriteTeamRepository.findByUserIdAndTeamId(userId, teamId).orElse(null);
         if (existing != null) {
             // update fields we allow to change
@@ -131,7 +131,7 @@ public class Controller {
     }
 
     @DeleteMapping("/favoriteteams/user/{userId}/team/{teamId}") // DELETE 1
-    public String deleteFavoriteTeamByUserIdAndTeamId(@PathVariable Long userId, @PathVariable Long teamId) {
+    public String deleteFavoriteTeamByUserIdAndTeamId(@PathVariable("userId") Long userId, @PathVariable("teamId") Long teamId) {
         if (favoriteTeamRepository.existsByUserIdAndTeamId(userId, teamId)) {
             favoriteTeamRepository.deleteByUserIdAndTeamId(userId, teamId);
             return "FavoriteTeam with userId " + userId + " and teamId " + teamId + " deleted.";
@@ -141,7 +141,7 @@ public class Controller {
     }
 
     @DeleteMapping("/favoriteteams/{id}") // DELETE 2
-    public String deleteFavoriteTeamById(@PathVariable Long id) {
+    public String deleteFavoriteTeamById(@PathVariable("id") Long id) {
         if (favoriteTeamRepository.existsById(id)) {
             favoriteTeamRepository.deleteById(id);
             return "FavoriteTeam with id " + id + " deleted.";
