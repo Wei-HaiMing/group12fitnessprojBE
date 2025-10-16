@@ -31,7 +31,8 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         
         // Extract GitHub user information
-        Long githubId = oAuth2User.getAttribute("id");
+        Integer githubIdInt = oAuth2User.getAttribute("id");
+        Long githubId = githubIdInt != null ? githubIdInt.longValue() : null;
         String email = oAuth2User.getAttribute("email");
         String name = oAuth2User.getAttribute("name");
         String login = oAuth2User.getAttribute("login"); // GitHub username
