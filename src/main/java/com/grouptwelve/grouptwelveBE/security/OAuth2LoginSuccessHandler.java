@@ -41,14 +41,19 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         final String finalName = (name == null || name.isEmpty()) ? login : name;
         
         // Save or update user in database
-        User user = userRepository.findById(githubId)
-            .orElseGet(() -> {
-                User newUser = new User();
-                newUser.setUserId(githubId);
-                newUser.setEmail(email);
-                newUser.setName(finalName);
-                return userRepository.save(newUser);
-            });
+        Optional<User> existingUser = userRepository.findById(githubId);
+        User user;
+        if (existingUser.isPresent()) {
+            // User exists, just use it (don't update to avoid version conflicts)
+            user = existingUser.get();
+        } else {
+            // New user, create and save
+            User newUser = new User();
+            newUser.setUserId(githubId);
+            newUser.setEmail(email);
+            newUser.setName(finalName);
+            user = userRepository.save(newUser);
+        }
         
         // Generate JWT token (convert githubId to String)
         String jwtToken = jwtUtil.createToken(String.valueOf(githubId), email, finalName);
